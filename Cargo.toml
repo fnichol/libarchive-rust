@@ -6,7 +6,7 @@ license = "MIT"
 repository = "https://github.com/reset/libarchive-rust"
 
 [dependencies]
-libc = "*"
+libc = ">= 0.2.0"
 
 [dependencies.libarchive3-sys]
 git = "https://github.com/reset/libarchive3-sys"
