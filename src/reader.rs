@@ -6,6 +6,7 @@ use std::io::{self, Read};
 use std::mem;
 use std::path::Path;
 use std::ptr;
+use std::slice;
 
 use libc::{c_void, ssize_t};
 use libarchive3_sys::ffi;
@@ -38,12 +39,26 @@ pub trait Reader : Handle {
         unsafe { ffi::archive_read_header_position(self.handle()) }
     }
 
-    fn next_header(&mut self) -> Option<&ReaderEntry> {
+    fn next_header(&mut self) -> Option<&mut ReaderEntry> {
         let res = unsafe { ffi::archive_read_next_header(self.handle(), &mut self.entry().handle) };
         if res == 0 {
             Some(self.entry())
         } else {
             None
+        }
+    }
+
+    fn read_block(&self) -> ArchiveResult<Option<&[u8]>> {
+        let mut buff = ptr::null();
+        let mut size = 0;
+        let mut offset = 0;
+
+        unsafe {
+            match ffi::archive_read_data_block(self.handle(), &mut buff, &mut size, &mut offset) {
+                ffi::ARCHIVE_EOF => Ok(None),
+                ffi::ARCHIVE_OK => Ok(Some(slice::from_raw_parts(buff as *const u8, size))),
+                _ => Err(ArchiveError::Sys(self.err_code(), self.err_msg())),
+            }
         }
     }
 }
@@ -56,7 +71,7 @@ pub struct FileReader {
 pub struct StreamReader {
     handle: *mut ffi::Struct_archive,
     entry: ReaderEntry,
-    _pipe: Pipe,
+    _pipe: Box<Pipe>,
 }
 
 pub struct Builder {
@@ -133,9 +148,8 @@ impl Drop for FileReader {
 impl StreamReader {
     pub fn open<T: Any + Read>(mut builder: Builder, src: T) -> ArchiveResult<Self> {
         unsafe {
-            builder.consume();
-            let mut pipe = Pipe::new(src);
-            let pipe_ptr: *mut c_void = &mut pipe as *mut Pipe as *mut c_void;
+            let mut pipe = Box::new(Pipe::new(src));
+            let pipe_ptr: *mut c_void = &mut *pipe as *mut Pipe as *mut c_void;
             match ffi::archive_read_open(builder.handle(),
                                          pipe_ptr,
                                          None,
@@ -147,9 +161,13 @@ impl StreamReader {
                         entry: ReaderEntry::default(),
                         _pipe: pipe,
                     };
+                    builder.consume();
                     Ok(reader)
                 }
-                _ => Err(ArchiveError::from(&builder as &Handle)),
+                _ => {
+                    builder.consume();
+                    Err(ArchiveError::from(&builder as &Handle))
+                }
             }
         }
     }

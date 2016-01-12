@@ -5,7 +5,7 @@ use archive;
 pub type ArchiveResult<T> = Result<T, ArchiveError>;
 
 #[derive(Debug)]
-pub struct ErrCode(i32);
+pub struct ErrCode(pub i32);
 
 impl fmt::Display for ErrCode {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -44,20 +44,14 @@ impl fmt::Display for ArchiveError {
 
 impl<'a> From<&'a archive::Handle> for ArchiveError {
     fn from(handle: &'a archive::Handle) -> ArchiveError {
-        ArchiveError::Sys(ErrCode::from(handle), handle.err_msg())
-    }
-}
-
-impl<'a> From<&'a archive::Handle> for ErrCode {
-    fn from(handle: &'a archive::Handle) -> ErrCode {
-        ErrCode(handle.err_code())
+        ArchiveError::Sys(handle.err_code(), handle.err_msg())
     }
 }
 
 impl<'a> From<&'a archive::Handle> for ArchiveResult<()> {
     fn from(handle: &'a archive::Handle) -> ArchiveResult<()> {
         match handle.err_code() {
-            0 => Ok(()),
+            ErrCode(0) => Ok(()),
             _ => Err(ArchiveError::from(handle)),
         }
     }

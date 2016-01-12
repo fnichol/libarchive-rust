@@ -3,6 +3,7 @@ use std::str;
 use std::ffi::CStr;
 
 use libarchive3_sys::ffi;
+use error::ErrCode;
 
 pub enum ReadCompression {
     All,
@@ -93,8 +94,9 @@ pub enum WriteFilter {
 pub trait Handle {
     unsafe fn handle(&self) -> *mut ffi::Struct_archive;
 
-    fn err_code(&self) -> i32 {
-        unsafe { ffi::archive_errno(self.handle()) }
+    fn err_code(&self) -> ErrCode {
+        let code = unsafe { ffi::archive_errno(self.handle()) };
+        ErrCode(code)
     }
 
     fn err_msg(&self) -> String {
