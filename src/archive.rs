@@ -1,9 +1,10 @@
 use std::default::Default;
+use std::ffi::{CStr, CString};
+use std::path::PathBuf;
 use std::str;
-use std::ffi::CStr;
 
 use libarchive3_sys::ffi;
-use error::ErrCode;
+use error::{ArchiveResult, ErrCode};
 
 pub enum ReadCompression {
     All,
@@ -119,6 +120,14 @@ pub trait Entry {
 
     fn size(&self) -> i64 {
         unsafe { ffi::archive_entry_size(self.entry()) }
+    }
+
+    fn set_pathname(&mut self, path: PathBuf) -> ArchiveResult<()> {
+        unsafe {
+            let c_str = CString::new(path.to_str().unwrap()).unwrap();
+            ffi::archive_entry_set_pathname(self.entry(), c_str.as_ptr());
+        }
+        Ok(())
     }
 }
 

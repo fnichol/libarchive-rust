@@ -94,14 +94,19 @@ impl Disk {
     }
 
     // * Failures - HeaderPosition
-    pub fn write<T: Reader>(&self, reader: &mut T) -> ArchiveResult<()> {
+    pub fn write<T: Reader>(&self, reader: &mut T, prefix: Option<&str>) -> ArchiveResult<usize> {
         if reader.header_position() != 0 {
             return Err(ArchiveError::HeaderPosition);
         }
+        let mut bytes: usize = 0;
         let mut write_pending: bool = false;
         loop {
             {
                 if let Some(entry) = reader.next_header() {
+                    if let Some(pfx) = prefix {
+                        let path = Path::new(pfx).join(entry.pathname());
+                        try!(entry.set_pathname(path));
+                    }
                     match self.write_header(entry) {
                         Ok(()) => (),
                         Err(e) => return Err(e),
@@ -110,12 +115,18 @@ impl Disk {
                         write_pending = true
                     }
                 } else {
-                    return Ok(());
+                    break;
                 }
             }
             if write_pending {
-                try!(self.write_data(reader));
+                bytes += try!(self.write_data(reader));
                 write_pending = false;
+            }
+        }
+        unsafe {
+            match ffi::archive_write_finish_entry(self.handle()) {
+                ffi::ARCHIVE_OK => Ok(bytes),
+                _ => Err(ArchiveError::from(self as &Handle)),
             }
         }
     }
@@ -127,19 +138,19 @@ impl Disk {
         ArchiveResult::from(self as &Handle)
     }
 
-    fn write_data<T: Reader>(&self, reader: &T) -> ArchiveResult<()> {
+    fn write_data<T: Reader>(&self, reader: &T) -> ArchiveResult<usize> {
         let mut buff = ptr::null();
         let mut size = 0;
         let mut offset = 0;
 
         unsafe {
             match ffi::archive_read_data_block(reader.handle(), &mut buff, &mut size, &mut offset) {
-                ffi::ARCHIVE_EOF => Ok(()),
+                ffi::ARCHIVE_EOF => Ok(size),
                 ffi::ARCHIVE_OK => {
                     if ffi::archive_write_data_block(self.handle, buff, size, offset) < 0 {
                         Err(ArchiveError::from(self as &Handle))
                     } else {
-                        Ok(())
+                        Ok(size)
                     }
                 }
                 _ => Err(ArchiveError::from(reader as &Handle)),
