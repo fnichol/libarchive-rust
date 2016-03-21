@@ -139,7 +139,6 @@ impl Reader for FileReader {
 impl Drop for FileReader {
     fn drop(&mut self) {
         unsafe {
-            ffi::archive_read_close(self.handle()); // jw todo: close here?
             ffi::archive_read_free(self.handle());
         }
     }
@@ -188,7 +187,6 @@ impl Reader for StreamReader {
 impl Drop for StreamReader {
     fn drop(&mut self) {
         unsafe {
-            ffi::archive_read_close(self.handle()); // jw todo: close here?
             ffi::archive_read_free(self.handle());
         }
     }

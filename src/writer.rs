@@ -202,8 +202,6 @@ impl Default for Disk {
 
 impl Drop for Disk {
     fn drop(&mut self) {
-        // JW TODO: do not close, libarchive will handle it
-        self.close().unwrap();
         unsafe {
             ffi::archive_write_free(self.handle());
         }
