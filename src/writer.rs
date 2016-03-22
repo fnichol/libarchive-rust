@@ -113,7 +113,11 @@ impl Disk {
                 if let Some(entry) = reader.next_header() {
                     if let Some(pfx) = prefix {
                         let path = Path::new(pfx).join(entry.pathname());
-                        entry.set_pathname(path);
+                        entry.set_pathname(&path);
+                        if entry.hardlink().is_some() {
+                            let path = Path::new(pfx).join(entry.hardlink().unwrap());
+                            entry.set_link(&path);
+                        }
                     }
                     match self.write_header(entry) {
                         Ok(()) => (),

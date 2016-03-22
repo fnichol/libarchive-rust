@@ -139,6 +139,18 @@ pub trait Entry {
         }
     }
 
+    fn hardlink(&self) -> Option<&str> {
+        let c_str: &CStr = unsafe {
+            let ptr = ffi::archive_entry_hardlink(self.entry());
+            if ptr.is_null() {
+                return None;
+            }
+            CStr::from_ptr(ptr)
+        };
+        let buf: &[u8] = c_str.to_bytes();
+        Some(str::from_utf8(buf).unwrap())
+    }
+
     fn pathname(&self) -> &str {
         let c_str: &CStr = unsafe { CStr::from_ptr(ffi::archive_entry_pathname(self.entry())) };
         let buf: &[u8] = c_str.to_bytes();
@@ -147,6 +159,12 @@ pub trait Entry {
 
     fn size(&self) -> i64 {
         unsafe { ffi::archive_entry_size(self.entry()) }
+    }
+
+    fn symlink(&self) -> &str {
+        let c_str: &CStr = unsafe { CStr::from_ptr(ffi::archive_entry_symlink(self.entry())) };
+        let buf: &[u8] = c_str.to_bytes();
+        str::from_utf8(buf).unwrap()
     }
 
     fn set_filetype(&mut self, file_type: FileType) {
@@ -165,7 +183,14 @@ pub trait Entry {
         }
     }
 
-    fn set_pathname(&mut self, path: PathBuf) {
+    fn set_link(&mut self, path: &PathBuf) {
+        unsafe {
+            let c_str = CString::new(path.to_str().unwrap()).unwrap();
+            ffi::archive_entry_set_link(self.entry(), c_str.as_ptr());
+        }
+    }
+
+    fn set_pathname(&mut self, path: &PathBuf) {
         unsafe {
             let c_str = CString::new(path.to_str().unwrap()).unwrap();
             ffi::archive_entry_set_pathname(self.entry(), c_str.as_ptr());
