@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str;
 
 use libarchive3_sys::ffi;
-use error::{ArchiveResult, ErrCode};
+use error::ErrCode;
 
 pub enum ReadCompression {
     All,
@@ -92,6 +92,17 @@ pub enum WriteFilter {
     Xz,
 }
 
+pub enum FileType {
+    BlockDevice,
+    SymbolicLink,
+    Socket,
+    CharacterDevice,
+    Directory,
+    NamedPipe,
+    Mount,
+    RegularFile,
+}
+
 pub trait Handle {
     unsafe fn handle(&self) -> *mut ffi::Struct_archive;
 
@@ -112,6 +123,34 @@ pub trait Handle {
 pub trait Entry {
     unsafe fn entry(&self) -> *mut ffi::Struct_archive_entry;
 
+    fn filetype(&self) -> FileType {
+        unsafe {
+            match ffi::archive_entry_filetype(self.entry()) as u32 {
+                ffi::AE_IFBLK => FileType::BlockDevice,
+                ffi::AE_IFCHR => FileType::CharacterDevice,
+                ffi::AE_IFLNK => FileType::SymbolicLink,
+                ffi::AE_IFDIR => FileType::Directory,
+                ffi::AE_IFIFO => FileType::NamedPipe,
+                ffi::AE_IFMT => FileType::Mount,
+                ffi::AE_IFREG => FileType::RegularFile,
+                ffi::AE_IFSOCK => FileType::Socket,
+                code => unreachable!("undefined filetype: {}", code),
+            }
+        }
+    }
+
+    fn hardlink(&self) -> Option<&str> {
+        let c_str: &CStr = unsafe {
+            let ptr = ffi::archive_entry_hardlink(self.entry());
+            if ptr.is_null() {
+                return None;
+            }
+            CStr::from_ptr(ptr)
+        };
+        let buf: &[u8] = c_str.to_bytes();
+        Some(str::from_utf8(buf).unwrap())
+    }
+
     fn pathname(&self) -> &str {
         let c_str: &CStr = unsafe { CStr::from_ptr(ffi::archive_entry_pathname(self.entry())) };
         let buf: &[u8] = c_str.to_bytes();
@@ -122,12 +161,40 @@ pub trait Entry {
         unsafe { ffi::archive_entry_size(self.entry()) }
     }
 
-    fn set_pathname(&mut self, path: PathBuf) -> ArchiveResult<()> {
+    fn symlink(&self) -> &str {
+        let c_str: &CStr = unsafe { CStr::from_ptr(ffi::archive_entry_symlink(self.entry())) };
+        let buf: &[u8] = c_str.to_bytes();
+        str::from_utf8(buf).unwrap()
+    }
+
+    fn set_filetype(&mut self, file_type: FileType) {
+        unsafe {
+            let file_type = match file_type {
+                FileType::BlockDevice => ffi::AE_IFBLK,
+                FileType::CharacterDevice => ffi::AE_IFCHR,
+                FileType::SymbolicLink => ffi::AE_IFLNK,
+                FileType::Directory => ffi::AE_IFDIR,
+                FileType::NamedPipe => ffi::AE_IFIFO,
+                FileType::Mount => ffi::AE_IFMT,
+                FileType::RegularFile => ffi::AE_IFREG,
+                FileType::Socket => ffi::AE_IFSOCK,
+            };
+            ffi::archive_entry_set_filetype(self.entry(), file_type);
+        }
+    }
+
+    fn set_link(&mut self, path: &PathBuf) {
+        unsafe {
+            let c_str = CString::new(path.to_str().unwrap()).unwrap();
+            ffi::archive_entry_set_link(self.entry(), c_str.as_ptr());
+        }
+    }
+
+    fn set_pathname(&mut self, path: &PathBuf) {
         unsafe {
             let c_str = CString::new(path.to_str().unwrap()).unwrap();
             ffi::archive_entry_set_pathname(self.entry(), c_str.as_ptr());
         }
-        Ok(())
     }
 }
 

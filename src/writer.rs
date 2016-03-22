@@ -62,24 +62,30 @@ impl Disk {
 
     pub fn set_bytes_per_block(&mut self, count: i32) -> ArchiveResult<()> {
         unsafe {
-            ffi::archive_write_set_bytes_per_block(self.handle, count);
+            match ffi::archive_write_set_bytes_per_block(self.handle, count) {
+                ffi::ARCHIVE_OK => Ok(()),
+                _ => ArchiveResult::from(self as &Handle),
+            }
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     pub fn set_bytes_in_last_block(&mut self, count: i32) -> ArchiveResult<()> {
         unsafe {
-            ffi::archive_write_set_bytes_in_last_block(self.handle, count);
+            match ffi::archive_write_set_bytes_in_last_block(self.handle, count) {
+                ffi::ARCHIVE_OK => Ok(()),
+                _ => ArchiveResult::from(self as &Handle),
+            }
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     // Set options for extraction built from `ExtractOptions`
     pub fn set_options(&self, eopt: &ExtractOptions) -> ArchiveResult<()> {
         unsafe {
-            ffi::archive_write_disk_set_options(self.handle, eopt.flags);
+            match ffi::archive_write_disk_set_options(self.handle, eopt.flags) {
+                ffi::ARCHIVE_OK => Ok(()),
+                _ => ArchiveResult::from(self as &Handle),
+            }
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     // This convenience function installs a standard set of user and group lookup functions. These
@@ -88,9 +94,11 @@ impl Disk {
     // reduce the number of calls to getpwnam(3) and getgrnam(3).
     pub fn set_standard_lookup(&self) -> ArchiveResult<()> {
         unsafe {
-            ffi::archive_write_disk_set_standard_lookup(self.handle);
+            match ffi::archive_write_disk_set_standard_lookup(self.handle) {
+                ffi::ARCHIVE_OK => Ok(()),
+                _ => ArchiveResult::from(self as &Handle),
+            }
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     // * Failures - HeaderPosition
@@ -105,7 +113,11 @@ impl Disk {
                 if let Some(entry) = reader.next_header() {
                     if let Some(pfx) = prefix {
                         let path = Path::new(pfx).join(entry.pathname());
-                        try!(entry.set_pathname(path));
+                        entry.set_pathname(&path);
+                        if entry.hardlink().is_some() {
+                            let path = Path::new(pfx).join(entry.hardlink().unwrap());
+                            entry.set_link(&path);
+                        }
                     }
                     match self.write_header(entry) {
                         Ok(()) => (),
@@ -133,9 +145,11 @@ impl Disk {
 
     pub fn close(&self) -> ArchiveResult<()> {
         unsafe {
-            ffi::archive_write_close(self.handle());
+            match ffi::archive_write_close(self.handle()) {
+                ffi::ARCHIVE_OK => Ok(()),
+                _ => ArchiveResult::from(self as &Handle),
+            }
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     fn write_data<T: Reader>(&self, reader: &T) -> ArchiveResult<usize> {
@@ -164,9 +178,11 @@ impl Disk {
 
     fn write_header(&self, entry: &ReaderEntry) -> ArchiveResult<()> {
         unsafe {
-            ffi::archive_write_header(self.handle, entry.entry());
+            match ffi::archive_write_header(self.handle, entry.entry()) {
+                ffi::ARCHIVE_OK => Ok(()),
+                _ => ArchiveResult::from(self as &Handle),
+            }
         }
-        ArchiveResult::from(self as &Handle)
     }
 }
 
@@ -190,7 +206,6 @@ impl Default for Disk {
 
 impl Drop for Disk {
     fn drop(&mut self) {
-        self.close().unwrap();
         unsafe {
             ffi::archive_write_free(self.handle());
         }
@@ -203,107 +218,64 @@ impl Builder {
     }
 
     pub fn add_filter(&mut self, filter: WriteFilter) -> ArchiveResult<()> {
-        match filter {
+        let result = match filter {
             WriteFilter::B64Encode => unsafe {
-                ffi::archive_write_add_filter_b64encode(self.handle);
+                ffi::archive_write_add_filter_b64encode(self.handle)
             },
-            WriteFilter::Bzip2 => unsafe {
-                ffi::archive_write_add_filter_bzip2(self.handle);
-            },
-            WriteFilter::Compress => unsafe {
-                ffi::archive_write_add_filter_compress(self.handle);
-            },
-            WriteFilter::Grzip => unsafe {
-                ffi::archive_write_add_filter_grzip(self.handle);
-            },
-            WriteFilter::Gzip => unsafe {
-                ffi::archive_write_add_filter_gzip(self.handle);
-            },
-            WriteFilter::Lrzip => unsafe {
-                ffi::archive_write_add_filter_lrzip(self.handle);
-            },
-            WriteFilter::Lzip => unsafe {
-                ffi::archive_write_add_filter_lzip(self.handle);
-            },
-            WriteFilter::Lzma => unsafe {
-                ffi::archive_write_add_filter_lzma(self.handle);
-            },
-            WriteFilter::Lzop => unsafe {
-                ffi::archive_write_add_filter_lzop(self.handle);
-            },
-            WriteFilter::None => unsafe {
-                ffi::archive_write_add_filter_none(self.handle);
-            },
+            WriteFilter::Bzip2 => unsafe { ffi::archive_write_add_filter_bzip2(self.handle) },
+            WriteFilter::Compress => unsafe { ffi::archive_write_add_filter_compress(self.handle) },
+            WriteFilter::Grzip => unsafe { ffi::archive_write_add_filter_grzip(self.handle) },
+            WriteFilter::Gzip => unsafe { ffi::archive_write_add_filter_gzip(self.handle) },
+            WriteFilter::Lrzip => unsafe { ffi::archive_write_add_filter_lrzip(self.handle) },
+            WriteFilter::Lzip => unsafe { ffi::archive_write_add_filter_lzip(self.handle) },
+            WriteFilter::Lzma => unsafe { ffi::archive_write_add_filter_lzma(self.handle) },
+            WriteFilter::Lzop => unsafe { ffi::archive_write_add_filter_lzop(self.handle) },
+            WriteFilter::None => unsafe { ffi::archive_write_add_filter_none(self.handle) },
             WriteFilter::Program(prog) => {
                 let c_prog = CString::new(prog).unwrap();
-                unsafe { ffi::archive_write_add_filter_program(self.handle, c_prog.as_ptr()) };
-
+                unsafe { ffi::archive_write_add_filter_program(self.handle, c_prog.as_ptr()) }
             }
-            WriteFilter::UuEncode => unsafe {
-                ffi::archive_write_add_filter_uuencode(self.handle);
-            },
-            WriteFilter::Xz => unsafe {
-                ffi::archive_write_add_filter_xz(self.handle);
-            },
+            WriteFilter::UuEncode => unsafe { ffi::archive_write_add_filter_uuencode(self.handle) },
+            WriteFilter::Xz => unsafe { ffi::archive_write_add_filter_xz(self.handle) },
+        };
+        match result {
+            ffi::ARCHIVE_OK => Ok(()),
+            _ => ArchiveResult::from(self as &Handle),
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     pub fn set_format(&self, format: WriteFormat) -> ArchiveResult<()> {
-        match format {
-            WriteFormat::SevenZip => unsafe {
-                ffi::archive_write_set_format_7zip(self.handle);
-            },
-            WriteFormat::ArBsd => unsafe {
-                ffi::archive_write_set_format_ar_bsd(self.handle);
-            },
-            WriteFormat::ArSvr4 => unsafe {
-                ffi::archive_write_set_format_ar_svr4(self.handle);
-            },
-            WriteFormat::Cpio => unsafe {
-                ffi::archive_write_set_format_cpio(self.handle);
-            },
+        let result = match format {
+            WriteFormat::SevenZip => unsafe { ffi::archive_write_set_format_7zip(self.handle) },
+            WriteFormat::ArBsd => unsafe { ffi::archive_write_set_format_ar_bsd(self.handle) },
+            WriteFormat::ArSvr4 => unsafe { ffi::archive_write_set_format_ar_svr4(self.handle) },
+            WriteFormat::Cpio => unsafe { ffi::archive_write_set_format_cpio(self.handle) },
             WriteFormat::CpioNewc => unsafe {
-                ffi::archive_write_set_format_cpio_newc(self.handle);
+                ffi::archive_write_set_format_cpio_newc(self.handle)
             },
-            WriteFormat::Gnutar => unsafe {
-                ffi::archive_write_set_format_gnutar(self.handle);
-            },
-            WriteFormat::Iso9660 => unsafe {
-                ffi::archive_write_set_format_iso9660(self.handle);
-            },
-            WriteFormat::Mtree => unsafe {
-                ffi::archive_write_set_format_mtree(self.handle);
-            },
+            WriteFormat::Gnutar => unsafe { ffi::archive_write_set_format_gnutar(self.handle) },
+            WriteFormat::Iso9660 => unsafe { ffi::archive_write_set_format_iso9660(self.handle) },
+            WriteFormat::Mtree => unsafe { ffi::archive_write_set_format_mtree(self.handle) },
             WriteFormat::MtreeClassic => unsafe {
-                ffi::archive_write_set_format_mtree_classic(self.handle);
+                ffi::archive_write_set_format_mtree_classic(self.handle)
             },
-            WriteFormat::Pax => unsafe {
-                ffi::archive_write_set_format_pax(self.handle);
-            },
+            WriteFormat::Pax => unsafe { ffi::archive_write_set_format_pax(self.handle) },
             WriteFormat::PaxRestricted => unsafe {
-                ffi::archive_write_set_format_pax_restricted(self.handle);
+                ffi::archive_write_set_format_pax_restricted(self.handle)
             },
-            WriteFormat::Shar => unsafe {
-                ffi::archive_write_set_format_shar(self.handle);
-            },
+            WriteFormat::Shar => unsafe { ffi::archive_write_set_format_shar(self.handle) },
             WriteFormat::SharDump => unsafe {
-                ffi::archive_write_set_format_shar_dump(self.handle);
+                ffi::archive_write_set_format_shar_dump(self.handle)
             },
-            WriteFormat::Ustar => unsafe {
-                ffi::archive_write_set_format_ustar(self.handle);
-            },
-            WriteFormat::V7tar => unsafe {
-                ffi::archive_write_set_format_v7tar(self.handle);
-            },
-            WriteFormat::Xar => unsafe {
-                ffi::archive_write_set_format_xar(self.handle);
-            },
-            WriteFormat::Zip => unsafe {
-                ffi::archive_write_set_format_zip(self.handle);
-            },
+            WriteFormat::Ustar => unsafe { ffi::archive_write_set_format_ustar(self.handle) },
+            WriteFormat::V7tar => unsafe { ffi::archive_write_set_format_v7tar(self.handle) },
+            WriteFormat::Xar => unsafe { ffi::archive_write_set_format_xar(self.handle) },
+            WriteFormat::Zip => unsafe { ffi::archive_write_set_format_zip(self.handle) },
+        };
+        match result {
+            ffi::ARCHIVE_OK => Ok(()),
+            _ => ArchiveResult::from(self as &Handle),
         }
-        ArchiveResult::from(self as &Handle)
     }
 
     pub fn open_file<T: AsRef<Path>>(mut self, file: T) -> ArchiveResult<Writer> {
@@ -313,7 +285,7 @@ impl Builder {
         let c_file = CString::new(file.as_ref().to_string_lossy().as_bytes()).unwrap();
         let res = unsafe { ffi::archive_write_open_filename(self.handle, c_file.as_ptr()) };
         match res {
-            0 => {
+            ffi::ARCHIVE_OK => {
                 self.consumed = true;
                 Ok(Writer::new(self.handle))
             }
