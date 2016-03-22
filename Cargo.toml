@@ -1,6 +1,6 @@
 [package]
 name = "libarchive"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jamie Winsor <reset@chef.io>"]
 license = "Apache-2.0"
 repository = "https://github.com/chef/libarchive-rust"
