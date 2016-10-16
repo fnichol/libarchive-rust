@@ -161,10 +161,16 @@ pub trait Entry {
         unsafe { ffi::archive_entry_size(self.entry()) }
     }
 
-    fn symlink(&self) -> &str {
-        let c_str: &CStr = unsafe { CStr::from_ptr(ffi::archive_entry_symlink(self.entry())) };
+    fn symlink(&self) -> Option<&str> {
+        let c_str: &CStr = unsafe {
+            let ptr = ffi::archive_entry_symlink(self.entry());
+            if ptr.is_null() {
+                return None;
+            }
+            CStr::from_ptr(ptr)
+        };
         let buf: &[u8] = c_str.to_bytes();
-        str::from_utf8(buf).unwrap()
+        Some(str::from_utf8(buf).unwrap())
     }
 
     fn set_filetype(&mut self, file_type: FileType) {
