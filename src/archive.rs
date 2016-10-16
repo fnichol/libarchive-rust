@@ -101,6 +101,7 @@ pub enum FileType {
     NamedPipe,
     Mount,
     RegularFile,
+    Unknown,
 }
 
 pub trait Handle {
@@ -134,6 +135,7 @@ pub trait Entry {
                 ffi::AE_IFMT => FileType::Mount,
                 ffi::AE_IFREG => FileType::RegularFile,
                 ffi::AE_IFSOCK => FileType::Socket,
+                0 => FileType::Unknown,
                 code => unreachable!("undefined filetype: {}", code),
             }
         }
@@ -184,6 +186,7 @@ pub trait Entry {
                 FileType::Mount => ffi::AE_IFMT,
                 FileType::RegularFile => ffi::AE_IFREG,
                 FileType::Socket => ffi::AE_IFSOCK,
+                FileType::Unknown => 0,
             };
             ffi::archive_entry_set_filetype(self.entry(), file_type);
         }
