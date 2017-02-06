@@ -324,3 +324,33 @@ impl Drop for Builder {
         }
     }
 }
+
+pub struct WriterEntry {
+    handle: *mut ffi::Struct_archive_entry,
+}
+
+impl WriterEntry {
+    pub fn new() -> Self {
+        let handle = unsafe {
+            ffi::archive_entry_new()
+        };
+        if handle.is_null() {
+            panic!("Allocation error");
+        }
+        WriterEntry { handle: handle }
+    }
+}
+
+impl Entry for WriterEntry {
+    unsafe fn entry(&self) -> *mut ffi::Struct_archive_entry {
+        self.handle
+    }
+}
+
+impl Drop for WriterEntry {
+    fn drop(&mut self) {
+        unsafe {
+            ffi::archive_entry_free(self.handle);
+        }
+    }
+}
