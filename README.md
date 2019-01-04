@@ -5,8 +5,6 @@
 
 A Rust crate for interacting with archives using [libarchive](http://www.libarchive.org)
 
-[Documentation](http://reset.github.io/libarchive-rust)
-
 ## Requirements
 
 Version 3 of libarchive is required to use this library.
