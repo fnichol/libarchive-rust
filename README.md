@@ -1,7 +1,7 @@
 # libarchive-rust
 
 [![Build Status](https://travis-ci.org/chef/libarchive-rust.svg?branch=master)](https://travis-ci.org/chef/libarchive-rust)
-[![crates.io](https://meritbadge.herokuapp.com/gpgme)](https://crates.io/crates/libarchive)
+[![crates.io](https://meritbadge.herokuapp.com/libarchive)](https://crates.io/crates/libarchive)
 
 A Rust crate for interacting with archives using [libarchive](http://www.libarchive.org)
 
