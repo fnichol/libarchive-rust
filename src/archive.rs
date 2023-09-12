@@ -3,8 +3,8 @@ use std::ffi::{CStr, CString};
 use std::path::PathBuf;
 use std::str;
 
+use crate::error::ErrCode;
 use libarchive3_sys::ffi;
-use error::ErrCode;
 
 pub enum ReadCompression {
     All,
