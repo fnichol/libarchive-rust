@@ -9,5 +9,5 @@ description = "A safe Rust API for authoring and extracting archives with libarc
 keywords = ["libarchive", "archive", "tar", "zip"]
 
 [dependencies]
-libc = ">= 0.2.0"
-libarchive3-sys = "0.1"
+libc = "0.2.147"
+libarchive3-sys = { git = "https://github.com/jerry73204/libarchive3-sys.git", branch = "rewrite-using-bindgen" }

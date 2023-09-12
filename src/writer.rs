@@ -3,33 +3,33 @@ use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 
-use libarchive3_sys::ffi;
+use libarchive3_sys as ffi;
 
 use crate::archive::{Entry, ExtractOptions, Handle, WriteFilter, WriteFormat};
 use crate::error::{ArchiveError, ArchiveResult};
 use crate::reader::{Reader, ReaderEntry};
 
 pub struct Writer {
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
 }
 
 pub struct Disk {
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
 }
 
 pub struct Builder {
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
     consumed: bool,
 }
 
 impl Writer {
-    pub fn new(handle: *mut ffi::Struct_archive) -> Self {
+    pub fn new(handle: *mut ffi::archive) -> Self {
         Writer { handle: handle }
     }
 }
 
 impl Handle for Writer {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive {
+    unsafe fn handle(&self) -> *mut ffi::archive {
         self.handle
     }
 }
@@ -190,7 +190,7 @@ impl Disk {
 }
 
 impl Handle for Disk {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive {
+    unsafe fn handle(&self) -> *mut ffi::archive {
         self.handle
     }
 }
@@ -313,7 +313,7 @@ impl Default for Builder {
 }
 
 impl Handle for Builder {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive {
+    unsafe fn handle(&self) -> *mut ffi::archive {
         self.handle
     }
 }

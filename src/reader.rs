@@ -7,7 +7,7 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 
-use libarchive3_sys::ffi;
+use libarchive3_sys as ffi;
 use libc::{c_void, ssize_t};
 
 use crate::archive::{Entry, Handle, ReadCompression, ReadFilter, ReadFormat};
@@ -16,7 +16,7 @@ use crate::error::{ArchiveError, ArchiveResult};
 const BLOCK_SIZE: usize = 10240;
 
 unsafe extern "C" fn stream_read_callback(
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
     data: *mut c_void,
     buff: *mut *const c_void,
 ) -> ssize_t {
@@ -64,23 +64,23 @@ pub trait Reader: Handle {
 }
 
 pub struct FileReader {
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
     entry: ReaderEntry,
 }
 
 pub struct StreamReader {
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
     entry: ReaderEntry,
     _pipe: Box<Pipe>,
 }
 
 pub struct Builder {
-    handle: *mut ffi::Struct_archive,
+    handle: *mut ffi::archive,
     consumed: bool,
 }
 
 pub struct ReaderEntry {
-    handle: *mut ffi::Struct_archive_entry,
+    handle: *mut ffi::archive_entry,
 }
 
 struct Pipe {
@@ -116,7 +116,7 @@ impl FileReader {
         }
     }
 
-    fn new(handle: *mut ffi::Struct_archive) -> Self {
+    fn new(handle: *mut ffi::archive) -> Self {
         FileReader {
             handle: handle,
             entry: ReaderEntry::default(),
@@ -125,7 +125,7 @@ impl FileReader {
 }
 
 impl Handle for FileReader {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive {
+    unsafe fn handle(&self) -> *mut ffi::archive {
         self.handle
     }
 }
@@ -175,7 +175,7 @@ impl StreamReader {
 }
 
 impl Handle for StreamReader {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive {
+    unsafe fn handle(&self) -> *mut ffi::archive {
         self.handle
     }
 }
@@ -329,7 +329,7 @@ impl Builder {
 }
 
 impl Handle for Builder {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive {
+    unsafe fn handle(&self) -> *mut ffi::archive {
         self.handle
     }
 }
@@ -360,7 +360,7 @@ impl Default for Builder {
 }
 
 impl ReaderEntry {
-    pub fn new(handle: *mut ffi::Struct_archive_entry) -> Self {
+    pub fn new(handle: *mut ffi::archive_entry) -> Self {
         ReaderEntry { handle: handle }
     }
 }
@@ -374,7 +374,7 @@ impl Default for ReaderEntry {
 }
 
 impl Entry for ReaderEntry {
-    unsafe fn entry(&self) -> *mut ffi::Struct_archive_entry {
+    unsafe fn entry(&self) -> *mut ffi::archive_entry {
         self.handle
     }
 }

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::str;
 
 use crate::error::ErrCode;
-use libarchive3_sys::ffi;
+use libarchive3_sys as ffi;
 
 pub enum ReadCompression {
     All,
@@ -104,7 +104,7 @@ pub enum FileType {
 }
 
 pub trait Handle {
-    unsafe fn handle(&self) -> *mut ffi::Struct_archive;
+    unsafe fn handle(&self) -> *mut ffi::archive;
 
     fn err_code(&self) -> ErrCode {
         let code = unsafe { ffi::archive_errno(self.handle()) };
@@ -121,7 +121,7 @@ pub trait Handle {
 }
 
 pub trait Entry {
-    unsafe fn entry(&self) -> *mut ffi::Struct_archive_entry;
+    unsafe fn entry(&self) -> *mut ffi::archive_entry;
 
     fn filetype(&self) -> FileType {
         unsafe {
