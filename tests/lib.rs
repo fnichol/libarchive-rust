@@ -2,10 +2,10 @@ extern crate libarchive;
 
 pub mod util;
 
-use std::fs::File;
 use libarchive::archive::{self, ReadFilter, ReadFormat};
 use libarchive::reader::{self, Reader};
 use libarchive::writer;
+use std::fs::File;
 
 #[test]
 fn reading_from_file() {
@@ -37,11 +37,14 @@ fn read_archive_from_stream() {
         Ok(mut reader) => {
             assert_eq!(reader.header_position(), 0);
             let writer = writer::Disk::new();
-            let count = writer.write(&mut reader, Some("/opt/bldr/fucks")).ok().unwrap();
+            let count = writer
+                .write(&mut reader, Some("/opt/bldr/fucks"))
+                .ok()
+                .unwrap();
             assert_eq!(count, 14);
             assert_eq!(reader.header_position(), 1024);
             assert_eq!(4, 4);
-        },
+        }
         Err(e) => {
             println!("{:?}", e);
         }
@@ -92,7 +95,7 @@ fn extracting_a_reader_twice() {
     println!("{:?}", reader.header_position());
     match writer.write(&mut reader, None) {
         Ok(_) => println!("oops"),
-        Err(_) => println!("nice")
+        Err(_) => println!("nice"),
     }
     assert_eq!(4, 4)
 }
